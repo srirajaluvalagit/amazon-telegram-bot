@@ -1,10 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+import os
 
-# ====== CONFIG ======
-BOT_TOKEN = "8642981862:AAGgWwA9PND4uaTk45YNkgrMbcX9ImLi-jM"
-CHAT_ID = "-1003754770968"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 # ====== HEADERS ======
 headers = {

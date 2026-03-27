@@ -1,9 +1,9 @@
 name: Run Telegram Bot
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'   # runs every 6 hours
-  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -23,3 +23,6 @@ jobs:
 
       - name: Run bot
         run: python bot.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}

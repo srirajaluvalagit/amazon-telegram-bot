@@ -12,7 +12,12 @@ headers = {
 }
 
 # ====== SEARCH PAGE ======
-search_url = "https://www.amazon.in/s?k=mobile+deals"
+# search_url = "https://www.amazon.in/s?k=mobile+deals"
+# ====== LOAD PRODUCT LINKS FROM FILE ======
+with open("products.txt", "r") as f:
+    urls = [line.strip() for line in f if line.strip()]
+
+print("TOTAL URLS FOUND:", len(urls))
 
 # ====== GET PRODUCT LINKS ======
 def get_product_links(url):
@@ -31,7 +36,7 @@ def get_product_links(url):
     return list(set(links))
 
 
-urls = get_product_links(search_url)[:5]
+# urls = get_product_links(search_url)[:5]
 
 print("TOTAL URLS FOUND:", len(urls))
 print(urls)

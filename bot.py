@@ -6,13 +6,12 @@ import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# ====== HEADERS ======
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "User-Agent": "Mozilla/5.0",
     "Accept-Language": "en-IN,en;q=0.9"
 }
 
-# ====== SEARCH URL ======
+# ====== SEARCH PAGE ======
 search_url = "https://www.amazon.in/s?k=mobile+deals"
 
 # ====== GET PRODUCT LINKS ======
@@ -31,17 +30,19 @@ def get_product_links(url):
 
     return list(set(links))
 
-urls = get_product_links(search_url)[:5]  # limit to 5
 
-# ====== LOAD POSTED LINKS ======
+urls = get_product_links(search_url)[:5]
+
+print("TOTAL URLS FOUND:", len(urls))
+print(urls)
+
+
+# ====== LOAD POSTED ======
 try:
     with open("posted.txt", "r") as f:
         posted = set(f.read().splitlines())
 except:
     posted = set()
-
-# ====== TELEGRAM URL ======
-send_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
 # ====== LOOP ======
 for url in urls:
@@ -52,47 +53,54 @@ for url in urls:
     res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
 
-    # ====== TITLE ======
+    # TITLE
     title_tag = soup.find("span", {"id": "productTitle"})
-    title = title_tag.get_text(strip=True) if title_tag else "Title not found"
+    title = title_tag.get_text(strip=True) if title_tag else "No title"
 
-    # ====== PRICE ======
+    # PRICE
     price_tag = soup.select_one("span.a-price span.a-offscreen")
-    price = price_tag.get_text(strip=True) if price_tag else "Price not found"
+    price = price_tag.get_text(strip=True) if price_tag else "No price"
 
-    # ====== IMAGE ======
+    # IMAGE
     img_tag = soup.find("img", {"id": "landingImage"})
     image = img_tag["src"] if img_tag else None
 
-    # ====== MESSAGE ======
+    # MESSAGE (HTML SAFE)
     message = f"""
-🔥 *MEGA DEAL ALERT* 🔥
+🔥 <b>MEGA DEAL ALERT</b>
 
-📦 *{title}*
+📦 {title}
 
-💰 *Price:* {price}
+💰 Price: {price}
 
-🛒 [Buy Now]({url})
+🛒 <a href="{url}">Buy Now</a>
 """
 
-    # ====== SEND ======
+    # SEND TO TELEGRAM
     if image:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data={
-            "chat_id": CHAT_ID,
-            "photo": image,
-            "caption": message,
-            "parse_mode": "Markdown"
-        })
+        response = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+            data={
+                "chat_id": CHAT_ID,
+                "photo": image,
+                "caption": message,
+                "parse_mode": "HTML"
+            }
+        )
     else:
-        requests.post(send_url, data={
-            "chat_id": CHAT_ID,
-            "text": message,
-            "parse_mode": "Markdown"
-        })
+        response = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            data={
+                "chat_id": CHAT_ID,
+                "text": message,
+                "parse_mode": "HTML"
+            }
+        )
 
-    print(f"Posted: {title}")
+    print("TELEGRAM RESPONSE:", response.text)
+    print("Posted:", title)
 
-    # ====== SAVE ======
+    # SAVE LINK
     with open("posted.txt", "a") as f:
         f.write(url + "\n")
 

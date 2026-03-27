@@ -21,11 +21,13 @@ def get_product_links(url):
     soup = BeautifulSoup(res.text, "html.parser")
 
     links = []
-    for a in soup.select("a.a-link-normal.s-no-outline"):
-        href = a.get("href")
-        if href and "/dp/" in href:
-            full_link = "https://www.amazon.in" + href.split("?")[0]
-            links.append(full_link)
+
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+
+        if "/dp/" in href:
+            clean = "https://www.amazon.in" + href.split("?")[0]
+            links.append(clean)
 
     return list(set(links))
 

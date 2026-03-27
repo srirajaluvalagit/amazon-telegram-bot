@@ -6,6 +6,9 @@ import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+print("BOT_TOKEN:", BOT_TOKEN)
+print("CHAT_ID:", CHAT_ID)
+
 headers = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "en-IN,en;q=0.9"

@@ -2,48 +2,49 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
+import feedparser
 
+# ====== TELEGRAM CONFIG ======
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 print("BOT_TOKEN:", BOT_TOKEN)
 print("CHAT_ID:", CHAT_ID)
 
+# ====== HEADERS ======
 headers = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "en-IN,en;q=0.9"
 }
 
-# ====== SEARCH PAGE ======
-# search_url = "https://www.amazon.in/s?k=mobile+deals"
-# ====== LOAD PRODUCT LINKS FROM FILE ======
-with open("products.txt", "r") as f:
-    urls = [line.strip() for line in f if line.strip()]
-
-print("TOTAL URLS FOUND:", len(urls))
-
-# ====== GET PRODUCT LINKS ======
-def get_product_links(url):
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
+# ====== GET DEAL LINKS FROM RSS ======
+def get_deal_links():
+    feed_url = "https://www.dealsofamerica.com/rss.xml"
+    feed = feedparser.parse(feed_url)
 
     links = []
+    for entry in feed.entries[:10]:
+        links.append(entry.link)
 
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
+    return links
 
-        if "/dp/" in href:
-            clean = "https://www.amazon.in" + href.split("?")[0]
-            links.append(clean)
+# ====== ADD AFFILIATE TAG ======
+def add_affiliate_tag(url):
+    tag = "srirajsales-21"   # 🔥 PUT YOUR REAL TAG HERE
+    if "?" in url:
+        return url + f"&tag={tag}"
+    else:
+        return url + f"?tag={tag}"
 
-    return list(set(links))
+# ====== LOAD DEALS ======
+urls = get_deal_links()
+print("TOTAL DEALS:", len(urls))
 
+# Filter only Amazon links
+urls = [u for u in urls if "amazon" in u]
 
-# urls = get_product_links(search_url)[:5]
-
-print("TOTAL URLS FOUND:", len(urls))
+print("FILTERED AMAZON URLS:", len(urls))
 print(urls)
-
 
 # ====== LOAD POSTED ======
 try:
@@ -58,60 +59,69 @@ for url in urls:
     if url in posted:
         continue
 
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, "html.parser")
 
-    # TITLE
-    title_tag = soup.find("span", {"id": "productTitle"})
-    title = title_tag.get_text(strip=True) if title_tag else "No title"
+        # TITLE
+        title_tag = soup.find("span", {"id": "productTitle"})
+        title = title_tag.get_text(strip=True) if title_tag else "No title"
 
-    # PRICE
-    price_tag = soup.select_one("span.a-price span.a-offscreen")
-    price = price_tag.get_text(strip=True) if price_tag else "No price"
+        # PRICE
+        price_tag = soup.select_one("span.a-price span.a-offscreen")
+        price = price_tag.get_text(strip=True) if price_tag else "No price"
 
-    # IMAGE
-    img_tag = soup.find("img", {"id": "landingImage"})
-    image = img_tag["src"] if img_tag else None
+        # IMAGE
+        img_tag = soup.find("img", {"id": "landingImage"})
+        image = img_tag["src"] if img_tag else None
 
-    # MESSAGE (HTML SAFE)
-    message = f"""
+        # 👉 ADD AFFILIATE LINK HERE
+        affiliate_url = add_affiliate_tag(url)
+
+        # MESSAGE
+        message = f"""
 🔥 <b>MEGA DEAL ALERT</b>
 
-📦 {title}
+📦 {title[:120]}
 
-💰 Price: {price}
+💰 <b>Price:</b> {price}
 
-🛒 <a href="{url}">Buy Now</a>
+⚡ Limited time deal!
+
+🛒 <a href="{affiliate_url}">Buy Now</a>
 """
 
-    # SEND TO TELEGRAM
-    if image:
-        response = requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-            data={
-                "chat_id": CHAT_ID,
-                "photo": image,
-                "caption": message,
-                "parse_mode": "HTML"
-            }
-        )
-    else:
-        response = requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            data={
-                "chat_id": CHAT_ID,
-                "text": message,
-                "parse_mode": "HTML"
-            }
-        )
+        # SEND TO TELEGRAM
+        if image:
+            response = requests.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                data={
+                    "chat_id": CHAT_ID,
+                    "photo": image,
+                    "caption": message,
+                    "parse_mode": "HTML"
+                }
+            )
+        else:
+            response = requests.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                data={
+                    "chat_id": CHAT_ID,
+                    "text": message,
+                    "parse_mode": "HTML"
+                }
+            )
 
-    print("TELEGRAM RESPONSE:", response.text)
-    print("Posted:", title)
+        print("TELEGRAM RESPONSE:", response.text)
+        print("Posted:", title)
 
-    # SAVE LINK
-    with open("posted.txt", "a") as f:
-        f.write(url + "\n")
+        # SAVE LINK
+        with open("posted.txt", "a") as f:
+            f.write(url + "\n")
 
-    time.sleep(5)
+        time.sleep(5)
+
+    except Exception as e:
+        print("ERROR:", e)
 
 print("Done!")

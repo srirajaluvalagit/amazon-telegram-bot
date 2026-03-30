@@ -1,25 +1,26 @@
-name: Run Telegram Bot
+name: Run Bot
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'   # runs every 6 hours
+    - cron: '0 */6 * * *'  # runs every 6 hours
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4   # ✅ updated version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5   # ✅ updated version
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: |
+          pip install requests beautifulsoup4 feedparser
 
       - name: Run bot
         run: python bot.py

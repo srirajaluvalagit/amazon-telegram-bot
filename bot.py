@@ -40,11 +40,36 @@ def add_affiliate_tag(url):
 urls = get_deal_links()
 print("TOTAL DEALS:", len(urls))
 
-# Filter only Amazon links
-urls = [u for u in urls if "amazon" in u]
+def extract_amazon_link(deal_url):
+    try:
+        res = requests.get(deal_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, "html.parser")
 
-print("FILTERED AMAZON URLS:", len(urls))
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+
+            if "amazon.in" in href and "/dp/" in href:
+                return href.split("?")[0]
+
+    except Exception as e:
+        print("ERROR extracting:", e)
+
+    return None
+
+# Filter only Amazon links
+amazon_urls = []
+
+for deal in urls:
+    link = extract_amazon_link(deal)
+    if link:
+        amazon_urls.append(link)
+
+urls = amazon_urls
+
+print("FINAL AMAZON URLS:", len(urls))
 print(urls)
+
+
 
 # ====== LOAD POSTED ======
 try:

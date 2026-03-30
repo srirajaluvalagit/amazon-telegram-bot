@@ -2,74 +2,45 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
-import feedparser
 
-# ====== TELEGRAM CONFIG ======
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 print("BOT_TOKEN:", BOT_TOKEN)
 print("CHAT_ID:", CHAT_ID)
 
-# ====== HEADERS ======
 headers = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "en-IN,en;q=0.9"
 }
 
-# ====== GET DEAL LINKS FROM RSS ======
-def get_deal_links():
-    feed_url = "https://www.dealsofamerica.com/rss.xml"
-    feed = feedparser.parse(feed_url)
+# ====== AMAZON SEARCH ======
+search_url = "https://www.amazon.in/s?k=mobile+deals"
+
+def get_product_links(url):
+    res = requests.get(url, headers=headers)
+    soup = BeautifulSoup(res.text, "html.parser")
 
     links = []
-    for entry in feed.entries[:10]:
-        links.append(entry.link)
 
-    return links
+    for a in soup.select("a.a-link-normal.s-no-outline"):
+        href = a.get("href")
+        if href and "/dp/" in href:
+            clean = "https://www.amazon.in" + href.split("?")[0]
+            links.append(clean)
 
-# ====== ADD AFFILIATE TAG ======
-def add_affiliate_tag(url):
-    tag = "srirajsales-21"   # 🔥 PUT YOUR REAL TAG HERE
-    if "?" in url:
-        return url + f"&tag={tag}"
-    else:
-        return url + f"?tag={tag}"
+    return list(set(links))
 
-# ====== LOAD DEALS ======
-urls = get_deal_links()
-print("TOTAL DEALS:", len(urls))
+# ====== GET PRODUCTS ======
+urls = get_product_links(search_url)[:5]
 
-def extract_amazon_link(deal_url):
-    try:
-        res = requests.get(deal_url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-
-            if "amazon.in" in href and "/dp/" in href:
-                return href.split("?")[0]
-
-    except Exception as e:
-        print("ERROR extracting:", e)
-
-    return None
-
-# Filter only Amazon links
-amazon_urls = []
-
-for deal in urls:
-    link = extract_amazon_link(deal)
-    if link:
-        amazon_urls.append(link)
-
-urls = amazon_urls
-
-print("FINAL AMAZON URLS:", len(urls))
+print("TOTAL URLS FOUND:", len(urls))
 print(urls)
 
-
+# ====== AFFILIATE ======
+def add_affiliate_tag(url):
+    tag = "srirajsales-21"  # 🔥 PUT YOUR REAL TAG
+    return url + f"?tag={tag}"
 
 # ====== LOAD POSTED ======
 try:
@@ -85,38 +56,30 @@ for url in urls:
         continue
 
     try:
-        res = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(url, headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        # TITLE
         title_tag = soup.find("span", {"id": "productTitle"})
         title = title_tag.get_text(strip=True) if title_tag else "No title"
 
-        # PRICE
         price_tag = soup.select_one("span.a-price span.a-offscreen")
         price = price_tag.get_text(strip=True) if price_tag else "No price"
 
-        # IMAGE
         img_tag = soup.find("img", {"id": "landingImage"})
         image = img_tag["src"] if img_tag else None
 
-        # 👉 ADD AFFILIATE LINK HERE
         affiliate_url = add_affiliate_tag(url)
 
-        # MESSAGE
         message = f"""
-🔥 <b>MEGA DEAL ALERT</b>
+🔥 <b>HOT DEAL</b>
 
 📦 {title[:120]}
 
-💰 <b>Price:</b> {price}
-
-⚡ Limited time deal!
+💰 <b>{price}</b>
 
 🛒 <a href="{affiliate_url}">Buy Now</a>
 """
 
-        # SEND TO TELEGRAM
         if image:
             response = requests.post(
                 f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
@@ -137,10 +100,9 @@ for url in urls:
                 }
             )
 
-        print("TELEGRAM RESPONSE:", response.text)
+        print("TELEGRAM:", response.text)
         print("Posted:", title)
 
-        # SAVE LINK
         with open("posted.txt", "a") as f:
             f.write(url + "\n")
 
